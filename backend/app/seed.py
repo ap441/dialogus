@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.models import User, Book, Discussion
+from app.services.book_import import ingest_open_library_books
 
 
 SEED_BOOKS = [
@@ -53,9 +54,6 @@ SEED_BOOKS = [
 
 
 def seed_data(db: Session):
-    if db.query(Book).count() > 0:
-        return
-
     if db.query(User).count() == 0:
         demo_user = User(
             full_name="Demo Reader",
@@ -64,14 +62,18 @@ def seed_data(db: Session):
         )
         db.add(demo_user)
 
-    for item in SEED_BOOKS:
-        payload = dict(item)
-        discussions = payload.pop("discussions")
-        book = Book(**payload)
-        db.add(book)
-        db.flush()
+    if db.query(Book).count() == 0:
+        for item in SEED_BOOKS:
+            payload = dict(item)
+            discussions = payload.pop("discussions")
+            book = Book(**payload)
+            db.add(book)
+            db.flush()
 
-        for disc in discussions:
-            db.add(Discussion(book_id=book.id, **disc))
+            for disc in discussions:
+                db.add(Discussion(book_id=book.id, **disc))
 
     db.commit()
+
+    # Best effort enrichment from Open Library. If network is unavailable, local seed still works.
+    ingest_open_library_books(db)

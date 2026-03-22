@@ -4,16 +4,16 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models import Book
 from app.schemas import BookCardResponse, BookDetailResponse
+from app.services.semantic_search import rank_books_semantically
 
 router = APIRouter(prefix="/api/books", tags=["books"])
 
 
 @router.get("", response_model=list[BookCardResponse])
 def list_books(q: str | None = None, db: Session = Depends(get_db)):
-    query = db.query(Book)
-    if q:
-        query = query.filter(Book.title.ilike(f"%{q}%"))
-    return query.limit(50).all()
+    books = db.query(Book).all()
+    ranked = rank_books_semantically(books, q or "")
+    return ranked[:50]
 
 
 @router.get("/{book_id}", response_model=BookDetailResponse)
