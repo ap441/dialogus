@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { BookCard } from "@/components/BookCard";
 import { DiscussionCard } from "@/components/DiscussionCard";
@@ -9,12 +10,19 @@ import { Sidebar } from "@/components/Sidebar";
 import { getHomeData, HomeData } from "@/lib/api";
 
 export default function HomePage() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<HomeData | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const token = localStorage.getItem("dialogus_token");
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
     let mounted = true;
 
     async function load() {
@@ -40,7 +48,7 @@ export default function HomePage() {
     return () => {
       mounted = false;
     };
-  }, [query]);
+  }, [query, router]);
 
   return (
     <main className="screen backdrop">

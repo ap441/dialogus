@@ -76,3 +76,8 @@ export function getHomeData(query = "") {
 export function getBook(bookId: number) {
   return request<BookDetail>(`/api/books/${bookId}`);
 }
+
+export function getBooks(query = "") {
+  const suffix = query ? `?q=${encodeURIComponent(query)}` : "";
+  return request<BookCard[]>(`/api/books${suffix}`);
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 import { DiscussionCard } from "@/components/DiscussionCard";
 import { Navbar } from "@/components/Navbar";
@@ -9,10 +10,17 @@ import { Sidebar } from "@/components/Sidebar";
 import { BookDetail, getBook } from "@/lib/api";
 
 export default function BookDetailPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
   const [book, setBook] = useState<BookDetail | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const token = localStorage.getItem("dialogus_token");
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
     async function load() {
       try {
         const bookId = Number(params.id);
@@ -25,7 +33,7 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
     }
 
     load();
-  }, [params.id]);
+  }, [params.id, router]);
 
   if (error) {
     return (
