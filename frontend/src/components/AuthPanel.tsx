@@ -30,9 +30,11 @@ export function AuthPanel({ mode }: { mode: Mode }) {
         }
         const token = await signup(fullName, email, password);
         localStorage.setItem("dialogus_token", token.access_token);
+        localStorage.setItem("userEmail", email);
       } else {
         const token = await login(email, password);
         localStorage.setItem("dialogus_token", token.access_token);
+        localStorage.setItem("userEmail", email);
       }
 
       router.push("/home");

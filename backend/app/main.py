@@ -6,6 +6,7 @@ from app.api.discovery import router as discovery_router
 from app.api.books import router as books_router
 from app.core.config import settings
 from app.db.session import Base, engine, SessionLocal
+from app.models import User, Book, Discussion  # noqa: F401 - imported for table creation
 from app.seed import seed_data
 
 app = FastAPI(title=settings.app_name)
