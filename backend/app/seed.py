@@ -1,3 +1,5 @@
+import os
+
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
@@ -97,5 +99,6 @@ def seed_data(db: Session):
 
     db.commit()
 
-    # Best effort enrichment from Open Library. If network is unavailable, local seed still works.
-    ingest_open_library_books(db)
+    # Optional enrichment from Open Library. Disabled by default in docker-compose to keep startup fast.
+    if os.getenv("BOOK_IMPORT_ENABLED", "1").lower() not in {"0", "false", "no"}:
+        ingest_open_library_books(db, per_subject=80)

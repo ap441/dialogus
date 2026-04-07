@@ -8,6 +8,7 @@ services:
       # DATABASE_URL: defaults to local SQLite if not set in .env
       # For Supabase: postgresql://postgres:[PASSWORD]@db.[PROJECT_ID].supabase.co:5432/postgres
       DATABASE_URL: ${DATABASE_URL:-sqlite:///./dialogus.db}
+      BOOK_IMPORT_ENABLED: "0"
       CORS_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
       JWT_SECRET: "change-this-secret-in-production"
     ports:

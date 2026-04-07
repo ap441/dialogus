@@ -13,10 +13,11 @@ router = APIRouter(prefix="/api/books", tags=["books"])
 
 
 @router.get("", response_model=list[BookCardResponse])
-def list_books(q: str | None = None, db: Session = Depends(get_db)):
+def list_books(q: str | None = None, limit: int = 1000, db: Session = Depends(get_db)):
     books = db.query(Book).all()
     ranked = rank_books_semantically(books, q or "")
-    return ranked[:50]
+    safe_limit = max(1, min(limit, 1000))
+    return ranked[:safe_limit]
 
 
 @router.get("/{book_id}", response_model=BookDetailResponse)
