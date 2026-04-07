@@ -27,21 +27,59 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
-    if str(engine.url).startswith("sqlite"):
-        with engine.begin() as conn:
+    """Initialize database schema and seed data on startup."""
+    db_url = str(engine.url)
+    is_sqlite = db_url.startswith("sqlite")
+    is_postgresql = "postgresql" in db_url
+    
+    with engine.begin() as conn:
+        # Create all tables first (idempotent)
+        Base.metadata.create_all(bind=engine)
+        
+        # Backfill missing columns for discussions table
+        if is_sqlite:
             columns = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(discussions)").fetchall()}
-            if "author_id" not in columns:
+        else:  # PostgreSQL
+            result = conn.exec_driver_sql(
+                "SELECT column_name FROM information_schema.columns WHERE table_name='discussions'"
+            )
+            columns = {row[0] for row in result}
+        
+        if "author_id" not in columns:
+            try:
                 conn.exec_driver_sql("ALTER TABLE discussions ADD COLUMN author_id INTEGER")
-            if "body" not in columns:
+            except Exception:
+                pass  # Column may already exist
+        
+        if "body" not in columns:
+            try:
                 conn.exec_driver_sql("ALTER TABLE discussions ADD COLUMN body TEXT DEFAULT ''")
-            if "likes_count" not in columns:
+            except Exception:
+                pass
+        
+        if "likes_count" not in columns:
+            try:
                 conn.exec_driver_sql("ALTER TABLE discussions ADD COLUMN likes_count INTEGER DEFAULT 0")
+            except Exception:
+                pass
+        
+        # Backfill missing columns for discussion_likes table
+        if is_sqlite:
             like_columns = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(discussion_likes)").fetchall()}
-            if "reaction_type" not in like_columns:
+        else:  # PostgreSQL
+            result = conn.exec_driver_sql(
+                "SELECT column_name FROM information_schema.columns WHERE table_name='discussion_likes'"
+            )
+            like_columns = {row[0] for row in result}
+        
+        if "reaction_type" not in like_columns:
+            try:
                 conn.exec_driver_sql("ALTER TABLE discussion_likes ADD COLUMN reaction_type TEXT DEFAULT 'like'")
-            conn.exec_driver_sql("UPDATE discussion_likes SET reaction_type = COALESCE(reaction_type, 'like')")
-
-    Base.metadata.create_all(bind=engine)
+                conn.exec_driver_sql("UPDATE discussion_likes SET reaction_type = COALESCE(reaction_type, 'like')")
+            except Exception:
+                pass
+    
+    # Seed demo data
     db = SessionLocal()
     try:
         seed_data(db)
