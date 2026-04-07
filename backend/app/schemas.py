@@ -34,9 +34,15 @@ class UserResponse(BaseModel):
 
 class DiscussionResponse(BaseModel):
     id: int
+    book_id: int | None = None
+    book_title: str | None = None
     title: str
     excerpt: str
+    body: str = ""
     replies: int
+    likes_count: int = 0
+    liked_by_me: bool = False
+    author_name: str = "Community"
     created_at: datetime
 
     class Config:
@@ -67,3 +73,45 @@ class HomeResponse(BaseModel):
     welcome_name: str
     trending_discussions: list[DiscussionResponse]
     recommended_books: list[BookCardResponse]
+
+
+class DiscussionCreateRequest(BaseModel):
+    title: str
+    excerpt: str
+    body: str = ""
+
+
+class DiscussionLikeResponse(BaseModel):
+    discussion_id: int
+    likes_count: int
+    liked: bool
+
+
+class ThreadPostCreateRequest(BaseModel):
+    content: str
+    parent_post_id: int | None = None
+
+
+class ThreadPostResponse(BaseModel):
+    id: int
+    discussion_id: int
+    parent_post_id: int | None
+    author_name: str
+    content: str
+    created_at: datetime
+    depth: int
+
+
+class DiscussionThreadResponse(BaseModel):
+    id: int
+    book_id: int
+    book_title: str
+    title: str
+    excerpt: str
+    body: str
+    replies: int
+    likes_count: int
+    liked_by_me: bool
+    author_name: str
+    created_at: datetime
+    posts: list[ThreadPostResponse]

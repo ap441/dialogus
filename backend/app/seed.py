@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
-from app.models import User, Book, Discussion
+from app.models import User, Book, Discussion, DiscussionPost
 from app.services.book_import import ingest_open_library_books
 
 
@@ -54,6 +54,7 @@ SEED_BOOKS = [
 
 
 def seed_data(db: Session):
+    demo_user = db.query(User).filter(User.email == "demo@dialogus.app").first()
     if db.query(User).count() == 0:
         demo_user = User(
             full_name="Demo Reader",
@@ -61,6 +62,7 @@ def seed_data(db: Session):
             hashed_password=hash_password("password123"),
         )
         db.add(demo_user)
+        db.flush()
 
     if db.query(Book).count() == 0:
         for item in SEED_BOOKS:
@@ -71,7 +73,27 @@ def seed_data(db: Session):
             db.flush()
 
             for disc in discussions:
-                db.add(Discussion(book_id=book.id, **disc))
+                excerpt = disc["excerpt"]
+                discussion = Discussion(
+                    book_id=book.id,
+                    author_id=demo_user.id if demo_user else None,
+                    title=disc["title"],
+                    excerpt=excerpt,
+                    body=excerpt,
+                    replies=disc["replies"],
+                    likes_count=max(1, disc["replies"] // 3),
+                )
+                db.add(discussion)
+                db.flush()
+
+                db.add(
+                    DiscussionPost(
+                        discussion_id=discussion.id,
+                        author_id=demo_user.id if demo_user else None,
+                        parent_post_id=None,
+                        content="Opening thought: I think this chapter signals a major shift in stakes.",
+                    )
+                )
 
     db.commit()
 

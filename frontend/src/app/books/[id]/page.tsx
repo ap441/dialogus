@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import { DiscussionCard } from "@/components/DiscussionCard";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { BookDetail, getBook } from "@/lib/api";
+import { BookDetail, createDiscussion, getBook, toggleDiscussionLike } from "@/lib/api";
 
 export default function BookDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [book, setBook] = useState<BookDetail | null>(null);
+  const [threadTitle, setThreadTitle] = useState("");
+  const [threadExcerpt, setThreadExcerpt] = useState("");
+  const [threadBody, setThreadBody] = useState("");
+  const [savingThread, setSavingThread] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -34,6 +38,64 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
 
     load();
   }, [params.id, router]);
+
+  async function handleCreateThread(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!book) {
+      return;
+    }
+
+    try {
+      setSavingThread(true);
+      const created = await createDiscussion(book.id, {
+        title: threadTitle,
+        excerpt: threadExcerpt,
+        body: threadBody,
+      });
+      setBook((current) => {
+        if (!current) {
+          return current;
+        }
+        return {
+          ...current,
+          discussions: [created, ...current.discussions],
+        };
+      });
+      setThreadTitle("");
+      setThreadExcerpt("");
+      setThreadBody("");
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create discussion");
+    } finally {
+      setSavingThread(false);
+    }
+  }
+
+  async function handleLike(discussionId: number) {
+    try {
+      const result = await toggleDiscussionLike(discussionId);
+      setBook((current) => {
+        if (!current) {
+          return current;
+        }
+        return {
+          ...current,
+          discussions: current.discussions.map((discussion) =>
+            discussion.id === discussionId
+              ? {
+                  ...discussion,
+                  likes_count: result.likes_count,
+                  liked_by_me: result.liked,
+                }
+              : discussion
+          ),
+        };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to appreciate discussion");
+    }
+  }
 
   if (error) {
     return (
@@ -91,11 +153,39 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
             </div>
 
             <h3>Start New Thread</h3>
+            <form className="thread-form" onSubmit={handleCreateThread}>
+              <input
+                value={threadTitle}
+                onChange={(event) => setThreadTitle(event.target.value)}
+                placeholder="Thread title"
+                required
+              />
+              <input
+                value={threadExcerpt}
+                onChange={(event) => setThreadExcerpt(event.target.value)}
+                placeholder="One-line prompt"
+                required
+              />
+              <textarea
+                value={threadBody}
+                onChange={(event) => setThreadBody(event.target.value)}
+                placeholder="Share your deeper take"
+                rows={4}
+              />
+              <button type="submit" disabled={savingThread}>
+                {savingThread ? "Publishing..." : "Publish Thread"}
+              </button>
+            </form>
             <p className="book-description">{book.description}</p>
 
             <div className="discussion-stack">
               {book.discussions.map((discussion) => (
-                <DiscussionCard key={discussion.id} discussion={discussion} />
+                <DiscussionCard
+                  key={discussion.id}
+                  discussion={discussion}
+                  onOpen={(discussionId) => router.push(`/discussions/${discussionId}`)}
+                  onLike={handleLike}
+                />
               ))}
             </div>
           </section>

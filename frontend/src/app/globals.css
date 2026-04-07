@@ -471,10 +471,36 @@ a {
   line-height: 1.4;
 }
 
+.discussion-book {
+  display: block;
+  margin-top: 8px;
+  color: var(--accent-2);
+  font-size: 0.8rem;
+}
+
 .discussion-footer {
   margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   font-size: 0.85rem;
   color: var(--accent-2);
+}
+
+.like-btn {
+  border: 1px solid var(--line);
+  background: rgba(8, 13, 23, 0.8);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.like-btn.liked {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .book-grid {
@@ -588,6 +614,70 @@ a {
   flex-direction: column;
   gap: 14px;
   margin-top: 14px;
+}
+
+.thread-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 18px;
+}
+
+.thread-form input,
+.thread-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  padding: 12px 14px;
+  font-size: 0.95rem;
+}
+
+.thread-form input:focus,
+.thread-form textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.thread-header-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.thread-meta {
+  margin: 0 0 8px;
+  color: var(--accent-2);
+  font-size: 0.9rem;
+}
+
+.thread-post {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.thread-post-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.thread-post p {
+  margin: 10px 0;
+  color: var(--text-soft);
+}
+
+.text-btn {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
 }
 
 @keyframes settle {

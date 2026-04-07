@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
 from app.api.discovery import router as discovery_router
 from app.api.books import router as books_router
+from app.api.discussions import router as discussions_router
 from app.core.config import settings
 from app.db.session import Base, engine, SessionLocal
 from app.models import User, Book, Discussion  # noqa: F401 - imported for table creation
@@ -26,6 +27,16 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
+    if str(engine.url).startswith("sqlite"):
+        with engine.begin() as conn:
+            columns = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(discussions)").fetchall()}
+            if "author_id" not in columns:
+                conn.exec_driver_sql("ALTER TABLE discussions ADD COLUMN author_id INTEGER")
+            if "body" not in columns:
+                conn.exec_driver_sql("ALTER TABLE discussions ADD COLUMN body TEXT DEFAULT ''")
+            if "likes_count" not in columns:
+                conn.exec_driver_sql("ALTER TABLE discussions ADD COLUMN likes_count INTEGER DEFAULT 0")
+
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
@@ -42,3 +53,4 @@ def health_check():
 app.include_router(auth_router)
 app.include_router(discovery_router)
 app.include_router(books_router)
+app.include_router(discussions_router)
