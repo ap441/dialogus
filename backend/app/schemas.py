@@ -19,6 +19,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class GoogleTokenRequest(BaseModel):
+    token: str
+
+
 class UserResponse(BaseModel):
     id: int
     full_name: str

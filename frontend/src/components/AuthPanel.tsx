@@ -2,8 +2,9 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { GoogleLogin } from "@react-oauth/google";
 
-import { login, signup } from "@/lib/api";
+import { login, signup, googleLogin } from "@/lib/api";
 
 type Mode = "login" | "signup";
 
@@ -45,6 +46,24 @@ export function AuthPanel({ mode }: { mode: Mode }) {
     }
   }
 
+  async function handleGoogleSuccess(credentialResponse: any) {
+    setLoading(true);
+    setError("");
+
+    try {
+      const token = await googleLogin(credentialResponse.credential);
+      localStorage.setItem("dialogus_token", token.access_token);
+      // Extract email from the JWT if needed, or fetch from /api/auth/me
+      const decoded = JSON.parse(atob(credentialResponse.credential.split('.')[1]));
+      localStorage.setItem("userEmail", decoded.email);
+      router.push("/home");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <form className="auth-panel glass" onSubmit={onSubmit}>
       <h1>{mode === "login" ? "Log In" : "Sign Up"}</h1>
@@ -57,9 +76,12 @@ export function AuthPanel({ mode }: { mode: Mode }) {
         {loading ? "Please wait..." : mode === "login" ? "Log In" : "Create Account"}
       </button>
 
-      <button type="button" className="google-btn" disabled>
-        Sign Up With Google
-      </button>
+      <div className="google-signin-wrapper">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={() => setError("Google sign-in failed")}
+        />
+      </div>
 
       {error ? <p className="error-text">{error}</p> : null}
     </form>

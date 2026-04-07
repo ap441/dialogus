@@ -336,6 +336,21 @@ a {
   background: rgba(28, 34, 52, 0.9);
 }
 
+.google-signin-wrapper {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.google-signin-wrapper div {
+  width: 100%;
+}
+
+.google-signin-wrapper button {
+  width: 100% !important;
+  margin-top: 0;
+}
+
 .error-text {
   color: var(--danger);
   margin: 8px 0 0;

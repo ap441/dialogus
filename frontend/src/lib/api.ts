@@ -34,7 +34,8 @@ export type HomeData = {
   recommended_books: BookCard[];
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Prefer same-origin API calls so Next.js rewrites can proxy to backend.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL?.trim() || "";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("dialogus_token") : null;
@@ -68,6 +69,13 @@ export function login(email: string, password: string) {
   return request<TokenResponse>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password })
+  });
+}
+
+export function googleLogin(token: string) {
+  return request<TokenResponse>("/api/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ token })
   });
 }
 
