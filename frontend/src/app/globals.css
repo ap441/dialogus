@@ -445,41 +445,62 @@ a {
 }
 
 .discussion-card {
-  padding: 14px;
-  border-radius: 10px;
+  padding: 16px;
+  border-radius: 16px;
   background: var(--glass);
   border: 1px solid var(--line);
   backdrop-filter: blur(10px);
-  transition: all 160ms ease;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
   cursor: pointer;
 }
 
 .discussion-card:hover {
   border-color: var(--accent);
-  background: rgba(235, 241, 255, 0.2);
+  background: rgba(235, 241, 255, 0.22);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
 }
 
 .discussion-card h4 {
   margin: 0 0 8px;
-  font-size: 1rem;
+  font-size: 1.05rem;
 }
 
-.discussion-card p {
+.discussion-author {
+  margin: 0 0 4px;
+  color: var(--accent-2);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.discussion-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.discussion-book-tag {
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-soft);
+  font-size: 0.75rem;
+}
+
+.discussion-excerpt {
   margin: 0;
   color: var(--text-soft);
   font-size: 0.9rem;
   line-height: 1.4;
-}
-
-.discussion-book {
-  display: block;
-  margin-top: 8px;
-  color: var(--accent-2);
-  font-size: 0.8rem;
+  min-height: 38px;
 }
 
 .discussion-footer {
-  margin-top: 10px;
+  margin-top: 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -488,19 +509,65 @@ a {
   color: var(--accent-2);
 }
 
-.like-btn {
-  border: 1px solid var(--line);
-  background: rgba(8, 13, 23, 0.8);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 0.8rem;
-  cursor: pointer;
+.reply-count {
+  color: var(--text-soft);
 }
 
-.like-btn.liked {
+.reaction-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(4, 8, 15, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.reaction-bar.compact {
+  gap: 6px;
+}
+
+.reaction-btn {
+  border: 1px solid var(--line);
+  background: rgba(8, 13, 23, 0.78);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.reaction-btn:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.reaction-btn.like.active {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.reaction-btn.dislike.active {
+  border-color: #ff9b8c;
+  color: #ff9b8c;
+}
+
+.reaction-btn.recommend.active {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+
+.reaction-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.reaction-count {
+  min-width: 1ch;
 }
 
 .book-grid {
@@ -645,6 +712,10 @@ a {
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
+}
+
+.thread-header-row .reaction-bar {
+  align-self: flex-start;
 }
 
 .thread-meta {

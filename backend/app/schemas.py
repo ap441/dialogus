@@ -1,6 +1,12 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+
+
+class ReactionCounts(BaseModel):
+    like: int = 0
+    dislike: int = 0
+    recommend: int = 0
 
 
 class TokenResponse(BaseModel):
@@ -42,6 +48,8 @@ class DiscussionResponse(BaseModel):
     replies: int
     likes_count: int = 0
     liked_by_me: bool = False
+    user_reaction: str | None = None
+    reaction_counts: ReactionCounts = Field(default_factory=ReactionCounts)
     author_name: str = "Community"
     created_at: datetime
 
@@ -81,10 +89,15 @@ class DiscussionCreateRequest(BaseModel):
     body: str = ""
 
 
-class DiscussionLikeResponse(BaseModel):
+class DiscussionReactionRequest(BaseModel):
+    reaction_type: str
+
+
+class DiscussionReactionResponse(BaseModel):
     discussion_id: int
+    reaction_type: str | None
     likes_count: int
-    liked: bool
+    reaction_counts: ReactionCounts
 
 
 class ThreadPostCreateRequest(BaseModel):
@@ -112,6 +125,8 @@ class DiscussionThreadResponse(BaseModel):
     replies: int
     likes_count: int
     liked_by_me: bool
+    user_reaction: str | None = None
+    reaction_counts: ReactionCounts = Field(default_factory=ReactionCounts)
     author_name: str
     created_at: datetime
     posts: list[ThreadPostResponse]

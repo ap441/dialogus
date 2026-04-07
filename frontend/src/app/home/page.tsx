@@ -7,7 +7,7 @@ import { BookCard } from "@/components/BookCard";
 import { DiscussionCard } from "@/components/DiscussionCard";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { getHomeData, getTimeline, toggleDiscussionLike, Discussion, HomeData } from "@/lib/api";
+import { Discussion, HomeData, getHomeData, getTimeline, setDiscussionReaction } from "@/lib/api";
 
 export default function HomePage() {
   const router = useRouter();
@@ -52,16 +52,18 @@ export default function HomePage() {
     };
   }, [query, router]);
 
-  async function handleLike(discussionId: number) {
+  async function handleReact(discussionId: number, reactionType: "like" | "dislike" | "recommend") {
     try {
-      const result = await toggleDiscussionLike(discussionId);
+      const result = await setDiscussionReaction(discussionId, reactionType);
       setTimeline((current) =>
         current.map((discussion) =>
           discussion.id === discussionId
             ? {
                 ...discussion,
                 likes_count: result.likes_count,
-                liked_by_me: result.liked,
+                liked_by_me: result.reaction_type === "like",
+                user_reaction: result.reaction_type,
+                reaction_counts: result.reaction_counts,
               }
             : discussion
         )
@@ -97,7 +99,7 @@ export default function HomePage() {
                   key={`timeline-${discussion.id}`}
                   discussion={discussion}
                   onOpen={(discussionId) => router.push(`/discussions/${discussionId}`)}
-                  onLike={handleLike}
+                  onReact={handleReact}
                 />
               ))}
             </div>
@@ -113,7 +115,7 @@ export default function HomePage() {
                   key={discussion.id}
                   discussion={discussion}
                   onOpen={(discussionId) => router.push(`/discussions/${discussionId}`)}
-                  onLike={handleLike}
+                  onReact={handleReact}
                 />
               ))}
             </div>

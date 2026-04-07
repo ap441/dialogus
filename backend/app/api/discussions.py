@@ -9,18 +9,39 @@ from app.deps import get_current_user
 from app.models import Book, Discussion, DiscussionLike, DiscussionPost, User
 from app.schemas import (
     DiscussionCreateRequest,
-    DiscussionLikeResponse,
+    DiscussionReactionRequest,
+    DiscussionReactionResponse,
     DiscussionResponse,
     DiscussionThreadResponse,
+    ReactionCounts,
     ThreadPostCreateRequest,
     ThreadPostResponse,
 )
 
 router = APIRouter(tags=["discussions"])
 
+REACTION_TYPES = {"like", "dislike", "recommend"}
+
+
+def _reaction_counts(discussion: Discussion) -> ReactionCounts:
+    counts = {"like": max(0, discussion.likes_count or 0), "dislike": 0, "recommend": 0}
+    for reaction in discussion.likes:
+        reaction_type = reaction.reaction_type or "like"
+        if reaction_type in counts and reaction_type != "like":
+            counts[reaction_type] += 1
+    return ReactionCounts(**counts)
+
+
+def _current_user_reaction(discussion: Discussion, current_user_id: int) -> str | None:
+    for reaction in discussion.likes:
+        if reaction.user_id == current_user_id:
+            return reaction.reaction_type or "like"
+    return None
+
 
 def _discussion_payload(discussion: Discussion, current_user_id: int) -> DiscussionResponse:
-    liked_by_me = any(like.user_id == current_user_id for like in discussion.likes)
+    user_reaction = _current_user_reaction(discussion, current_user_id)
+    reaction_counts = _reaction_counts(discussion)
     author_name = discussion.author.full_name if discussion.author else "Community"
     return DiscussionResponse(
         id=discussion.id,
@@ -30,8 +51,10 @@ def _discussion_payload(discussion: Discussion, current_user_id: int) -> Discuss
         excerpt=discussion.excerpt,
         body=discussion.body,
         replies=discussion.replies,
-        likes_count=discussion.likes_count,
-        liked_by_me=liked_by_me,
+        likes_count=reaction_counts.like,
+        liked_by_me=user_reaction == "like",
+        user_reaction=user_reaction,
+        reaction_counts=reaction_counts,
         author_name=author_name,
         created_at=discussion.created_at,
     )
@@ -115,9 +138,10 @@ def create_discussion(
     return _discussion_payload(discussion, current_user.id)
 
 
-@router.post("/api/discussions/{discussion_id}/like", response_model=DiscussionLikeResponse)
-def toggle_discussion_like(
+@router.post("/api/discussions/{discussion_id}/reaction", response_model=DiscussionReactionResponse)
+def set_discussion_reaction(
     discussion_id: int,
+    payload: DiscussionReactionRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -125,25 +149,68 @@ def toggle_discussion_like(
     if not discussion:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Discussion not found")
 
-    existing_like = (
+    reaction_type = payload.reaction_type.strip().lower()
+    if reaction_type not in REACTION_TYPES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reaction type")
+
+    existing_reaction = (
         db.query(DiscussionLike)
         .filter(DiscussionLike.discussion_id == discussion_id, DiscussionLike.user_id == current_user.id)
         .first()
     )
 
-    liked = False
-    if existing_like:
-        db.delete(existing_like)
-        discussion.likes_count = max(0, discussion.likes_count - 1)
+    current_reaction = existing_reaction.reaction_type if existing_reaction else None
+    if current_reaction not in REACTION_TYPES:
+        current_reaction = "like" if existing_reaction else None
+
+    if existing_reaction and current_reaction == reaction_type:
+        if current_reaction == "like":
+            discussion.likes_count = max(0, discussion.likes_count - 1)
+        db.delete(existing_reaction)
+        current_reaction = None
+    elif existing_reaction:
+        if current_reaction == "like":
+            discussion.likes_count = max(0, discussion.likes_count - 1)
+        if reaction_type == "like":
+            discussion.likes_count += 1
+        existing_reaction.reaction_type = reaction_type
+        current_reaction = reaction_type
     else:
-        db.add(DiscussionLike(discussion_id=discussion_id, user_id=current_user.id))
-        discussion.likes_count += 1
-        liked = True
+        db.add(
+            DiscussionLike(
+                discussion_id=discussion_id,
+                user_id=current_user.id,
+                reaction_type=reaction_type,
+            )
+        )
+        if reaction_type == "like":
+            discussion.likes_count += 1
+        current_reaction = reaction_type
 
     db.commit()
     db.refresh(discussion)
 
-    return DiscussionLikeResponse(discussion_id=discussion.id, likes_count=discussion.likes_count, liked=liked)
+    reaction_counts = _reaction_counts(discussion)
+    return DiscussionReactionResponse(
+        discussion_id=discussion.id,
+        reaction_type=current_reaction,
+        likes_count=reaction_counts.like,
+        reaction_counts=reaction_counts,
+    )
+
+
+@router.post("/api/discussions/{discussion_id}/like", response_model=DiscussionReactionResponse)
+def toggle_discussion_like(
+    discussion_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return set_discussion_reaction(
+        discussion_id,
+        DiscussionReactionRequest(reaction_type="like"),
+        db=db,
+        current_user=current_user,
+    )
 
 
 @router.get("/api/discussions/{discussion_id}/thread", response_model=DiscussionThreadResponse)
@@ -163,13 +230,8 @@ def get_discussion_thread(
         .all()
     )
     flattened_posts = _flatten_posts(posts)
-
-    liked_by_me = (
-        db.query(DiscussionLike)
-        .filter(DiscussionLike.discussion_id == discussion_id, DiscussionLike.user_id == current_user.id)
-        .first()
-        is not None
-    )
+    reaction_counts = _reaction_counts(discussion)
+    user_reaction = _current_user_reaction(discussion, current_user.id)
 
     return DiscussionThreadResponse(
         id=discussion.id,
@@ -179,8 +241,10 @@ def get_discussion_thread(
         excerpt=discussion.excerpt,
         body=discussion.body,
         replies=discussion.replies,
-        likes_count=discussion.likes_count,
-        liked_by_me=liked_by_me,
+        likes_count=reaction_counts.like,
+        liked_by_me=user_reaction == "like",
+        user_reaction=user_reaction,
+        reaction_counts=reaction_counts,
         author_name=discussion.author.full_name if discussion.author else "Community",
         created_at=discussion.created_at,
         posts=flattened_posts,
@@ -220,15 +284,13 @@ def create_thread_post(
 
     depth = 0
     if post.parent_post_id is not None:
-        parent_depth = 0
         current_parent_id = post.parent_post_id
         while current_parent_id is not None:
             parent_node = db.query(DiscussionPost).filter(DiscussionPost.id == current_parent_id).first()
             if not parent_node:
                 break
-            parent_depth += 1
+            depth += 1
             current_parent_id = parent_node.parent_post_id
-        depth = parent_depth
 
     return ThreadPostResponse(
         id=post.id,

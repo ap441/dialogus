@@ -3,9 +3,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { ReactionBar } from "@/components/ReactionBar";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { createThreadReply, DiscussionThread, getDiscussionThread, toggleDiscussionLike } from "@/lib/api";
+import { createThreadReply, DiscussionThread, getDiscussionThread, setDiscussionReaction } from "@/lib/api";
 
 export default function DiscussionThreadPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -50,19 +51,21 @@ export default function DiscussionThreadPage({ params }: { params: { id: string 
     };
   }, [params.id, router]);
 
-  async function handleLikeThread() {
+  async function handleReactThread(reactionType: "like" | "dislike" | "recommend") {
     if (!thread) {
       return;
     }
 
     try {
-      const result = await toggleDiscussionLike(thread.id);
+      const result = await setDiscussionReaction(thread.id, reactionType);
       setThread((current) =>
         current
           ? {
               ...current,
               likes_count: result.likes_count,
-              liked_by_me: result.liked,
+              liked_by_me: result.reaction_type === "like",
+              user_reaction: result.reaction_type,
+              reaction_counts: result.reaction_counts,
             }
           : current
       );
@@ -120,9 +123,11 @@ export default function DiscussionThreadPage({ params }: { params: { id: string 
                     <h2>{thread.title}</h2>
                     <p className="book-description">{thread.body || thread.excerpt}</p>
                   </div>
-                  <button type="button" onClick={handleLikeThread}>
-                    {thread.liked_by_me ? "Appreciated" : "Appreciate"} ({thread.likes_count})
-                  </button>
+                  <ReactionBar
+                    reactionCounts={thread.reaction_counts}
+                    activeReaction={thread.user_reaction ?? null}
+                    onReact={handleReactThread}
+                  />
                 </div>
               </section>
 

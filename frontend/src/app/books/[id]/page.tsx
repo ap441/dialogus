@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { DiscussionCard } from "@/components/DiscussionCard";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { BookDetail, createDiscussion, getBook, toggleDiscussionLike } from "@/lib/api";
+import { BookDetail, createDiscussion, getBook, setDiscussionReaction } from "@/lib/api";
 
 export default function BookDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -72,9 +72,9 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
     }
   }
 
-  async function handleLike(discussionId: number) {
+  async function handleReact(discussionId: number, reactionType: "like" | "dislike" | "recommend") {
     try {
-      const result = await toggleDiscussionLike(discussionId);
+      const result = await setDiscussionReaction(discussionId, reactionType);
       setBook((current) => {
         if (!current) {
           return current;
@@ -86,7 +86,9 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
               ? {
                   ...discussion,
                   likes_count: result.likes_count,
-                  liked_by_me: result.liked,
+                  liked_by_me: result.reaction_type === "like",
+                  user_reaction: result.reaction_type,
+                  reaction_counts: result.reaction_counts,
                 }
               : discussion
           ),
@@ -184,7 +186,7 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
                   key={discussion.id}
                   discussion={discussion}
                   onOpen={(discussionId) => router.push(`/discussions/${discussionId}`)}
-                  onLike={handleLike}
+                  onReact={handleReact}
                 />
               ))}
             </div>

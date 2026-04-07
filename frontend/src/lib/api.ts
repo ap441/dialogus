@@ -13,8 +13,18 @@ export type Discussion = {
   replies: number;
   likes_count?: number;
   liked_by_me?: boolean;
+  user_reaction?: ReactionType | null;
+  reaction_counts?: ReactionCounts;
   author_name?: string;
   created_at: string;
+};
+
+export type ReactionType = "like" | "dislike" | "recommend";
+
+export type ReactionCounts = {
+  like: number;
+  dislike: number;
+  recommend: number;
 };
 
 export type ThreadPost = {
@@ -37,6 +47,8 @@ export type DiscussionThread = {
   replies: number;
   likes_count: number;
   liked_by_me: boolean;
+  user_reaction?: ReactionType | null;
+  reaction_counts?: ReactionCounts;
   author_name: string;
   created_at: string;
   posts: ThreadPost[];
@@ -130,9 +142,21 @@ export function getBooks(query = "") {
 }
 
 export function toggleDiscussionLike(discussionId: number) {
-  return request<{ discussion_id: number; likes_count: number; liked: boolean }>(`/api/discussions/${discussionId}/like`, {
-    method: "POST"
-  });
+  return setDiscussionReaction(discussionId, "like");
+}
+
+export function setDiscussionReaction(discussionId: number, reactionType: ReactionType) {
+  return request<{ discussion_id: number; reaction_type: ReactionType | null; likes_count: number; reaction_counts: ReactionCounts }>(
+    `/api/discussions/${discussionId}/reaction`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reaction_type: reactionType })
+    }
+  );
+}
+
+export function toggleDiscussionReaction(discussionId: number, reactionType: ReactionType) {
+  return setDiscussionReaction(discussionId, reactionType);
 }
 
 export function createDiscussion(bookId: number, payload: { title: string; excerpt: string; body: string }) {

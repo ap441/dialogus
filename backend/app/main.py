@@ -36,6 +36,10 @@ def on_startup():
                 conn.exec_driver_sql("ALTER TABLE discussions ADD COLUMN body TEXT DEFAULT ''")
             if "likes_count" not in columns:
                 conn.exec_driver_sql("ALTER TABLE discussions ADD COLUMN likes_count INTEGER DEFAULT 0")
+            like_columns = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(discussion_likes)").fetchall()}
+            if "reaction_type" not in like_columns:
+                conn.exec_driver_sql("ALTER TABLE discussion_likes ADD COLUMN reaction_type TEXT DEFAULT 'like'")
+            conn.exec_driver_sql("UPDATE discussion_likes SET reaction_type = COALESCE(reaction_type, 'like')")
 
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.deps import get_current_user
 from app.models import Discussion, Book, User
+from app.api.discussions import _discussion_payload
 from app.schemas import HomeResponse
 from app.services.semantic_search import rank_books_semantically
 
@@ -25,8 +26,9 @@ def get_home_data(
         discussions_query = discussions_query.filter(Discussion.title.ilike(like_filter))
     ranked_books = rank_books_semantically(books, q or "")
 
+    trending_discussions = discussions_query.limit(5).all()
     return HomeResponse(
         welcome_name=current_user.full_name,
-        trending_discussions=discussions_query.limit(5).all(),
+        trending_discussions=[_discussion_payload(item, current_user.id) for item in trending_discussions],
         recommended_books=ranked_books[:8],
     )

@@ -79,6 +79,7 @@ class DiscussionLike(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     discussion_id: Mapped[int] = mapped_column(ForeignKey("discussions.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    reaction_type: Mapped[str] = mapped_column(String(16), default="like")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     discussion: Mapped[Discussion] = relationship(back_populates="likes")
