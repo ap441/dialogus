@@ -4,6 +4,11 @@ __pycache__/
 *.db
 .venv/
 
+# Environment variables (NEVER commit .env with secrets!)
+.env
+.env.local
+.env.*.local
+
 # Node
 node_modules/
 .next/

@@ -5,10 +5,53 @@ export type TokenResponse = {
 
 export type Discussion = {
   id: number;
+  book_id?: number | null;
+  book_title?: string | null;
   title: string;
   excerpt: string;
+  body?: string;
   replies: number;
+  likes_count?: number;
+  liked_by_me?: boolean;
+  user_reaction?: ReactionType | null;
+  reaction_counts?: ReactionCounts;
+  author_name?: string;
   created_at: string;
+};
+
+export type ReactionType = "like" | "dislike" | "recommend";
+
+export type ReactionCounts = {
+  like: number;
+  dislike: number;
+  recommend: number;
+};
+
+export type ThreadPost = {
+  id: number;
+  discussion_id: number;
+  parent_post_id: number | null;
+  author_name: string;
+  content: string;
+  created_at: string;
+  depth: number;
+};
+
+export type DiscussionThread = {
+  id: number;
+  book_id: number;
+  book_title: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  replies: number;
+  likes_count: number;
+  liked_by_me: boolean;
+  user_reaction?: ReactionType | null;
+  reaction_counts?: ReactionCounts;
+  author_name: string;
+  created_at: string;
+  posts: ThreadPost[];
 };
 
 export type BookCard = {
@@ -84,6 +127,11 @@ export function getHomeData(query = "") {
   return request<HomeData>(`/api/discovery/home${suffix}`);
 }
 
+export function getTimeline(query = "") {
+  const suffix = query ? `?q=${encodeURIComponent(query)}` : "";
+  return request<Discussion[]>(`/api/discussions/timeline${suffix}`);
+}
+
 export function getBook(bookId: number) {
   return request<BookDetail>(`/api/books/${bookId}`);
 }
@@ -91,4 +139,40 @@ export function getBook(bookId: number) {
 export function getBooks(query = "") {
   const suffix = query ? `?q=${encodeURIComponent(query)}` : "";
   return request<BookCard[]>(`/api/books${suffix}`);
+}
+
+export function toggleDiscussionLike(discussionId: number) {
+  return setDiscussionReaction(discussionId, "like");
+}
+
+export function setDiscussionReaction(discussionId: number, reactionType: ReactionType) {
+  return request<{ discussion_id: number; reaction_type: ReactionType | null; likes_count: number; reaction_counts: ReactionCounts }>(
+    `/api/discussions/${discussionId}/reaction`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reaction_type: reactionType })
+    }
+  );
+}
+
+export function toggleDiscussionReaction(discussionId: number, reactionType: ReactionType) {
+  return setDiscussionReaction(discussionId, reactionType);
+}
+
+export function createDiscussion(bookId: number, payload: { title: string; excerpt: string; body: string }) {
+  return request<Discussion>(`/api/books/${bookId}/discussions`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getDiscussionThread(discussionId: number) {
+  return request<DiscussionThread>(`/api/discussions/${discussionId}/thread`);
+}
+
+export function createThreadReply(discussionId: number, payload: { content: string; parent_post_id?: number | null }) {
+  return request<ThreadPost>(`/api/discussions/${discussionId}/posts`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }

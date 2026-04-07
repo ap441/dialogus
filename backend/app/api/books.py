@@ -2,8 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.deps import get_current_user
 from app.models import Book
 from app.schemas import BookCardResponse, BookDetailResponse
+from app.models import User
+from app.api.discussions import _discussion_payload
 from app.services.semantic_search import rank_books_semantically
 
 router = APIRouter(prefix="/api/books", tags=["books"])
@@ -17,8 +20,24 @@ def list_books(q: str | None = None, db: Session = Depends(get_db)):
 
 
 @router.get("/{book_id}", response_model=BookDetailResponse)
-def get_book(book_id: int, db: Session = Depends(get_db)):
+def get_book(
+    book_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-    return book
+    return BookDetailResponse(
+        id=book.id,
+        title=book.title,
+        author=book.author,
+        genre=book.genre,
+        cover_url=book.cover_url,
+        rating=book.rating,
+        description=book.description,
+        publication_year=book.publication_year,
+        language=book.language,
+        pages=book.pages,
+        discussions=[_discussion_payload(discussion, current_user.id) for discussion in book.discussions],
+    )

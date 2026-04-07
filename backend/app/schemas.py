@@ -1,6 +1,12 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+
+
+class ReactionCounts(BaseModel):
+    like: int = 0
+    dislike: int = 0
+    recommend: int = 0
 
 
 class TokenResponse(BaseModel):
@@ -34,9 +40,17 @@ class UserResponse(BaseModel):
 
 class DiscussionResponse(BaseModel):
     id: int
+    book_id: int | None = None
+    book_title: str | None = None
     title: str
     excerpt: str
+    body: str = ""
     replies: int
+    likes_count: int = 0
+    liked_by_me: bool = False
+    user_reaction: str | None = None
+    reaction_counts: ReactionCounts = Field(default_factory=ReactionCounts)
+    author_name: str = "Community"
     created_at: datetime
 
     class Config:
@@ -67,3 +81,52 @@ class HomeResponse(BaseModel):
     welcome_name: str
     trending_discussions: list[DiscussionResponse]
     recommended_books: list[BookCardResponse]
+
+
+class DiscussionCreateRequest(BaseModel):
+    title: str
+    excerpt: str
+    body: str = ""
+
+
+class DiscussionReactionRequest(BaseModel):
+    reaction_type: str
+
+
+class DiscussionReactionResponse(BaseModel):
+    discussion_id: int
+    reaction_type: str | None
+    likes_count: int
+    reaction_counts: ReactionCounts
+
+
+class ThreadPostCreateRequest(BaseModel):
+    content: str
+    parent_post_id: int | None = None
+
+
+class ThreadPostResponse(BaseModel):
+    id: int
+    discussion_id: int
+    parent_post_id: int | None
+    author_name: str
+    content: str
+    created_at: datetime
+    depth: int
+
+
+class DiscussionThreadResponse(BaseModel):
+    id: int
+    book_id: int
+    book_title: str
+    title: str
+    excerpt: str
+    body: str
+    replies: int
+    likes_count: int
+    liked_by_me: bool
+    user_reaction: str | None = None
+    reaction_counts: ReactionCounts = Field(default_factory=ReactionCounts)
+    author_name: str
+    created_at: datetime
+    posts: list[ThreadPostResponse]

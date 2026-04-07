@@ -7,13 +7,14 @@ import { BookCard } from "@/components/BookCard";
 import { DiscussionCard } from "@/components/DiscussionCard";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { getHomeData, HomeData } from "@/lib/api";
+import { Discussion, HomeData, getHomeData, getTimeline, setDiscussionReaction } from "@/lib/api";
 
 export default function HomePage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<HomeData | null>(null);
+  const [timeline, setTimeline] = useState<Discussion[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -28,9 +29,10 @@ export default function HomePage() {
     async function load() {
       try {
         setLoading(true);
-        const result = await getHomeData(query);
+        const [result, timelineData] = await Promise.all([getHomeData(query), getTimeline(query)]);
         if (mounted) {
           setData(result);
+          setTimeline(timelineData);
           setError("");
         }
       } catch (err) {
@@ -49,6 +51,27 @@ export default function HomePage() {
       mounted = false;
     };
   }, [query, router]);
+
+  async function handleReact(discussionId: number, reactionType: "like" | "dislike" | "recommend") {
+    try {
+      const result = await setDiscussionReaction(discussionId, reactionType);
+      setTimeline((current) =>
+        current.map((discussion) =>
+          discussion.id === discussionId
+            ? {
+                ...discussion,
+                likes_count: result.likes_count,
+                liked_by_me: result.reaction_type === "like",
+                user_reaction: result.reaction_type,
+                reaction_counts: result.reaction_counts,
+              }
+            : discussion
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update appreciation");
+    }
+  }
 
   return (
     <main className="screen backdrop">
@@ -69,12 +92,31 @@ export default function HomePage() {
           </div>
 
           <section className="glass panel">
+            <h3>Timeline Feed</h3>
+            <div className="discussion-grid">
+              {timeline.map((discussion) => (
+                <DiscussionCard
+                  key={`timeline-${discussion.id}`}
+                  discussion={discussion}
+                  onOpen={(discussionId) => router.push(`/discussions/${discussionId}`)}
+                  onReact={handleReact}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="glass panel">
             <h3>Trending Discussions</h3>
             <div className="discussion-grid">
               {loading ? <p>Loading discussions...</p> : null}
               {error ? <p className="error-text">{error}</p> : null}
               {data?.trending_discussions.map((discussion) => (
-                <DiscussionCard key={discussion.id} discussion={discussion} />
+                <DiscussionCard
+                  key={discussion.id}
+                  discussion={discussion}
+                  onOpen={(discussionId) => router.push(`/discussions/${discussionId}`)}
+                  onReact={handleReact}
+                />
               ))}
             </div>
           </section>
