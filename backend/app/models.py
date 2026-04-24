@@ -18,7 +18,11 @@ class User(Base):
     discussions: Mapped[list["Discussion"]] = relationship(back_populates="author")
     discussion_posts: Mapped[list["DiscussionPost"]] = relationship(back_populates="author")
     discussion_likes: Mapped[list["DiscussionLike"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    notifications: Mapped[list["Notification"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    notifications: Mapped[list["Notification"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="Notification.user_id",
+    )
 
 
 class Book(Base):

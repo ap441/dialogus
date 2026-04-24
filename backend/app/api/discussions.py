@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import desc, or_
+from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -36,6 +36,15 @@ def _reaction_counts(db: Session, discussion_id: int) -> ReactionCounts:
         if reaction_type in counts:
             counts[reaction_type] += 1
     return ReactionCounts(**counts)
+
+
+def _discussion_reply_count(db: Session, discussion_id: int) -> int:
+    return (
+        db.query(func.count(DiscussionPost.id))
+        .filter(DiscussionPost.discussion_id == discussion_id)
+        .scalar()
+        or 0
+    )
 
 
 def _current_user_reaction(db: Session, discussion_id: int, current_user_id: int) -> str | None:
@@ -75,7 +84,7 @@ def _discussion_payload(db: Session, discussion: Discussion, current_user_id: in
         title=discussion.title,
         excerpt=discussion.excerpt,
         body=discussion.body,
-        replies=discussion.replies,
+        replies=_discussion_reply_count(db, discussion.id),
         likes_count=reaction_counts.like,
         liked_by_me="like" in user_reactions,
         user_reaction=user_reaction,
@@ -272,7 +281,7 @@ def get_discussion_thread(
         title=discussion.title,
         excerpt=discussion.excerpt,
         body=discussion.body,
-        replies=discussion.replies,
+        replies=_discussion_reply_count(db, discussion.id),
         likes_count=reaction_counts.like,
         liked_by_me="like" in user_reactions,
         user_reaction=user_reaction,
@@ -311,7 +320,7 @@ def create_thread_post(
         content=payload.content.strip(),
     )
     db.add(post)
-    discussion.replies += 1
+    db.flush()
 
     recipients: set[int] = set()
     if discussion.author_id and discussion.author_id != current_user.id:
@@ -338,6 +347,7 @@ def create_thread_post(
             link=f"/discussions/{discussion.id}",
         )
 
+    discussion.replies = _discussion_reply_count(db, discussion_id)
     db.commit()
     db.refresh(post)
 
