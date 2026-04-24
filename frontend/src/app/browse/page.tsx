@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { BookCard } from "@/components/BookCard";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { BookCard as BookCardType, getBooks } from "@/lib/api";
+import { ApiError, BookCard as BookCardType, getBooks } from "@/lib/api";
 
 export default function BrowsePage() {
   const router = useRouter();
@@ -34,6 +34,13 @@ export default function BrowsePage() {
         }
       } catch (err) {
         if (mounted) {
+          if (err instanceof ApiError && err.status === 401) {
+            localStorage.removeItem("dialogus_token");
+            localStorage.removeItem("userEmail");
+            router.replace("/login");
+            return;
+          }
+
           setError(err instanceof Error ? err.message : "Failed to load books");
         }
       } finally {

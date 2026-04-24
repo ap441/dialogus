@@ -17,31 +17,56 @@ from app.schemas import (
     ThreadPostCreateRequest,
     ThreadPostResponse,
 )
+from app.services.notifications import create_notification
 
 router = APIRouter(tags=["discussions"])
 
 REACTION_TYPES = {"like", "dislike", "recommend"}
 
 
-def _reaction_counts(discussion: Discussion) -> ReactionCounts:
-    counts = {"like": max(0, discussion.likes_count or 0), "dislike": 0, "recommend": 0}
-    for reaction in discussion.likes:
-        reaction_type = reaction.reaction_type or "like"
-        if reaction_type in counts and reaction_type != "like":
+def _reaction_counts(db: Session, discussion_id: int) -> ReactionCounts:
+    counts = {"like": 0, "dislike": 0, "recommend": 0}
+    reactions = (
+        db.query(DiscussionLike.reaction_type)
+        .filter(DiscussionLike.discussion_id == discussion_id)
+        .all()
+    )
+    for reaction in reactions:
+        reaction_type = (reaction.reaction_type or "like").lower()
+        if reaction_type in counts:
             counts[reaction_type] += 1
     return ReactionCounts(**counts)
 
 
-def _current_user_reaction(discussion: Discussion, current_user_id: int) -> str | None:
-    for reaction in discussion.likes:
-        if reaction.user_id == current_user_id:
-            return reaction.reaction_type or "like"
+def _current_user_reaction(db: Session, discussion_id: int, current_user_id: int) -> str | None:
+    reactions = (
+        db.query(DiscussionLike.reaction_type)
+        .filter(DiscussionLike.discussion_id == discussion_id, DiscussionLike.user_id == current_user_id)
+        .all()
+    )
+    reaction_set = {(reaction.reaction_type or "like").lower() for reaction in reactions}
+    for reaction_type in ("like", "dislike", "recommend"):
+        if reaction_type in reaction_set:
+            return reaction_type
     return None
 
 
-def _discussion_payload(discussion: Discussion, current_user_id: int) -> DiscussionResponse:
-    user_reaction = _current_user_reaction(discussion, current_user_id)
-    reaction_counts = _reaction_counts(discussion)
+def _current_user_reactions(db: Session, discussion_id: int, current_user_id: int) -> list[str]:
+    reaction = (
+        db.query(DiscussionLike.reaction_type)
+        .filter(DiscussionLike.discussion_id == discussion_id, DiscussionLike.user_id == current_user_id)
+        .all()
+    )
+    active = sorted(
+        {(item.reaction_type or "like").lower() for item in reaction if (item.reaction_type or "like").lower() in REACTION_TYPES}
+    )
+    return active
+
+
+def _discussion_payload(db: Session, discussion: Discussion, current_user_id: int) -> DiscussionResponse:
+    user_reactions = _current_user_reactions(db, discussion.id, current_user_id)
+    user_reaction = user_reactions[0] if user_reactions else None
+    reaction_counts = _reaction_counts(db, discussion.id)
     author_name = discussion.author.full_name if discussion.author else "Community"
     return DiscussionResponse(
         id=discussion.id,
@@ -52,8 +77,9 @@ def _discussion_payload(discussion: Discussion, current_user_id: int) -> Discuss
         body=discussion.body,
         replies=discussion.replies,
         likes_count=reaction_counts.like,
-        liked_by_me=user_reaction == "like",
+        liked_by_me="like" in user_reactions,
         user_reaction=user_reaction,
+        user_reactions=user_reactions,
         reaction_counts=reaction_counts,
         author_name=author_name,
         created_at=discussion.created_at,
@@ -110,7 +136,7 @@ def get_timeline(
         )
 
     discussions = timeline_query.limit(max(1, min(limit, 100))).all()
-    return [_discussion_payload(item, current_user.id) for item in discussions]
+    return [_discussion_payload(db, item, current_user.id) for item in discussions]
 
 
 @router.post("/api/books/{book_id}/discussions", response_model=DiscussionResponse)
@@ -135,7 +161,7 @@ def create_discussion(
     db.commit()
     db.refresh(discussion)
 
-    return _discussion_payload(discussion, current_user.id)
+    return _discussion_payload(db, discussion, current_user.id)
 
 
 @router.post("/api/discussions/{discussion_id}/reaction", response_model=DiscussionReactionResponse)
@@ -155,26 +181,17 @@ def set_discussion_reaction(
 
     existing_reaction = (
         db.query(DiscussionLike)
-        .filter(DiscussionLike.discussion_id == discussion_id, DiscussionLike.user_id == current_user.id)
+        .filter(
+            DiscussionLike.discussion_id == discussion_id,
+            DiscussionLike.user_id == current_user.id,
+            DiscussionLike.reaction_type == reaction_type,
+        )
         .first()
     )
 
-    current_reaction = existing_reaction.reaction_type if existing_reaction else None
-    if current_reaction not in REACTION_TYPES:
-        current_reaction = "like" if existing_reaction else None
-
-    if existing_reaction and current_reaction == reaction_type:
-        if current_reaction == "like":
-            discussion.likes_count = max(0, discussion.likes_count - 1)
+    if existing_reaction:
         db.delete(existing_reaction)
-        current_reaction = None
-    elif existing_reaction:
-        if current_reaction == "like":
-            discussion.likes_count = max(0, discussion.likes_count - 1)
-        if reaction_type == "like":
-            discussion.likes_count += 1
-        existing_reaction.reaction_type = reaction_type
-        current_reaction = reaction_type
+        toggled_reaction: str | None = None
     else:
         db.add(
             DiscussionLike(
@@ -183,17 +200,31 @@ def set_discussion_reaction(
                 reaction_type=reaction_type,
             )
         )
-        if reaction_type == "like":
-            discussion.likes_count += 1
-        current_reaction = reaction_type
+        toggled_reaction = reaction_type
+
+        if discussion.author_id and discussion.author_id != current_user.id and reaction_type in {"like", "recommend"}:
+            verb = "liked" if reaction_type == "like" else "recommended"
+            create_notification(
+                db,
+                recipient_id=discussion.author_id,
+                actor_user=current_user,
+                notification_type=f"reaction_{reaction_type}",
+                title="New appreciation on your discussion",
+                message=f"{current_user.full_name} {verb} your discussion '{discussion.title}'.",
+                link=f"/discussions/{discussion.id}",
+            )
 
     db.commit()
     db.refresh(discussion)
 
-    reaction_counts = _reaction_counts(discussion)
+    reaction_counts = _reaction_counts(db, discussion.id)
+    discussion.likes_count = reaction_counts.like
+    user_reactions = _current_user_reactions(db, discussion.id, current_user.id)
+    db.commit()
     return DiscussionReactionResponse(
         discussion_id=discussion.id,
-        reaction_type=current_reaction,
+        reaction_type=toggled_reaction,
+        user_reactions=user_reactions,
         likes_count=reaction_counts.like,
         reaction_counts=reaction_counts,
     )
@@ -230,8 +261,9 @@ def get_discussion_thread(
         .all()
     )
     flattened_posts = _flatten_posts(posts)
-    reaction_counts = _reaction_counts(discussion)
-    user_reaction = _current_user_reaction(discussion, current_user.id)
+    reaction_counts = _reaction_counts(db, discussion.id)
+    user_reactions = _current_user_reactions(db, discussion.id, current_user.id)
+    user_reaction = user_reactions[0] if user_reactions else None
 
     return DiscussionThreadResponse(
         id=discussion.id,
@@ -242,8 +274,9 @@ def get_discussion_thread(
         body=discussion.body,
         replies=discussion.replies,
         likes_count=reaction_counts.like,
-        liked_by_me=user_reaction == "like",
+        liked_by_me="like" in user_reactions,
         user_reaction=user_reaction,
+        user_reactions=user_reactions,
         reaction_counts=reaction_counts,
         author_name=discussion.author.full_name if discussion.author else "Community",
         created_at=discussion.created_at,
@@ -279,6 +312,32 @@ def create_thread_post(
     )
     db.add(post)
     discussion.replies += 1
+
+    recipients: set[int] = set()
+    if discussion.author_id and discussion.author_id != current_user.id:
+        recipients.add(discussion.author_id)
+    if payload.parent_post_id is not None:
+        parent = (
+            db.query(DiscussionPost)
+            .filter(DiscussionPost.id == payload.parent_post_id, DiscussionPost.discussion_id == discussion_id)
+            .first()
+        )
+        if parent and parent.author_id and parent.author_id != current_user.id:
+            recipients.add(parent.author_id)
+
+    for recipient_id in recipients:
+        notification_type = "reply_to_discussion" if recipient_id == discussion.author_id else "reply_to_reply"
+        recipient_label = "your discussion" if recipient_id == discussion.author_id else "your reply"
+        create_notification(
+            db,
+            recipient_id=recipient_id,
+            actor_user=current_user,
+            notification_type=notification_type,
+            title="New reply",
+            message=f"{current_user.full_name} replied to {recipient_label} in '{discussion.title}'.",
+            link=f"/discussions/{discussion.id}",
+        )
+
     db.commit()
     db.refresh(post)
 

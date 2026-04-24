@@ -9,6 +9,7 @@ type ReactionCounts = {
 type ReactionBarProps = {
   reactionCounts?: ReactionCounts;
   activeReaction?: ReactionType | null;
+  activeReactions?: ReactionType[];
   onReact: (reactionType: ReactionType) => void;
   compact?: boolean;
 };
@@ -19,12 +20,14 @@ const reactions: Array<{ type: ReactionType; icon: string; label: string }> = [
   { type: "recommend", icon: "★", label: "Recommend" }
 ];
 
-export function ReactionBar({ reactionCounts, activeReaction, onReact, compact = false }: ReactionBarProps) {
+export function ReactionBar({ reactionCounts, activeReaction, activeReactions, onReact, compact = false }: ReactionBarProps) {
+  const activeSet = new Set(activeReactions ?? (activeReaction ? [activeReaction] : []));
+
   return (
     <div className={`reaction-bar ${compact ? "compact" : ""}`}>
       {reactions.map((reaction) => {
         const count = reactionCounts?.[reaction.type] ?? 0;
-        const active = activeReaction === reaction.type;
+        const active = activeSet.has(reaction.type);
 
         return (
           <button

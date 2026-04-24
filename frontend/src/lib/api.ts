@@ -3,6 +3,16 @@ export type TokenResponse = {
   token_type: string;
 };
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 export type Discussion = {
   id: number;
   book_id?: number | null;
@@ -14,6 +24,7 @@ export type Discussion = {
   likes_count?: number;
   liked_by_me?: boolean;
   user_reaction?: ReactionType | null;
+  user_reactions?: ReactionType[];
   reaction_counts?: ReactionCounts;
   author_name?: string;
   created_at: string;
@@ -48,6 +59,7 @@ export type DiscussionThread = {
   likes_count: number;
   liked_by_me: boolean;
   user_reaction?: ReactionType | null;
+  user_reactions?: ReactionType[];
   reaction_counts?: ReactionCounts;
   author_name: string;
   created_at: string;
@@ -77,6 +89,23 @@ export type HomeData = {
   recommended_books: BookCard[];
 };
 
+export type NotificationItem = {
+  id: number;
+  notification_type: string;
+  title: string;
+  message: string;
+  link?: string | null;
+  is_read: boolean;
+  actor_name?: string | null;
+  created_at: string;
+  read_at?: string | null;
+};
+
+export type NotificationList = {
+  unread_count: number;
+  notifications: NotificationItem[];
+};
+
 // Prefer same-origin API calls so Next.js rewrites can proxy to backend.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.trim() || "";
 
@@ -95,7 +124,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const message = await res.text();
-    throw new Error(message || "Request failed");
+    throw new ApiError(message || "Request failed", res.status);
   }
 
   return res.json() as Promise<T>;
@@ -146,7 +175,7 @@ export function toggleDiscussionLike(discussionId: number) {
 }
 
 export function setDiscussionReaction(discussionId: number, reactionType: ReactionType) {
-  return request<{ discussion_id: number; reaction_type: ReactionType | null; likes_count: number; reaction_counts: ReactionCounts }>(
+  return request<{ discussion_id: number; reaction_type: ReactionType | null; user_reactions: ReactionType[]; likes_count: number; reaction_counts: ReactionCounts }>(
     `/api/discussions/${discussionId}/reaction`,
     {
       method: "POST",
@@ -174,5 +203,25 @@ export function createThreadReply(discussionId: number, payload: { content: stri
   return request<ThreadPost>(`/api/discussions/${discussionId}/posts`, {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+}
+
+export function getNotifications(limit = 8) {
+  return request<NotificationList>(`/api/notifications?limit=${limit}`);
+}
+
+export function getUnreadNotificationCount() {
+  return request<{ unread_count: number }>("/api/notifications/unread-count");
+}
+
+export function markNotificationRead(notificationId: number) {
+  return request<NotificationItem>(`/api/notifications/${notificationId}/read`, {
+    method: "POST"
+  });
+}
+
+export function markAllNotificationsRead() {
+  return request<{ updated: number }>("/api/notifications/read-all", {
+    method: "POST"
   });
 }

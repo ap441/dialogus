@@ -40,5 +40,5 @@ def get_book(
         publication_year=book.publication_year,
         language=book.language,
         pages=book.pages,
-        discussions=[_discussion_payload(discussion, current_user.id) for discussion in book.discussions],
+        discussions=[_discussion_payload(db, discussion, current_user.id) for discussion in book.discussions],
     )

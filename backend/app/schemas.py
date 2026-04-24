@@ -38,6 +38,23 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
+class NotificationResponse(BaseModel):
+    id: int
+    notification_type: str
+    title: str
+    message: str
+    link: str | None = None
+    is_read: bool
+    actor_name: str | None = None
+    created_at: datetime
+    read_at: datetime | None = None
+
+
+class NotificationListResponse(BaseModel):
+    unread_count: int
+    notifications: list[NotificationResponse]
+
+
 class DiscussionResponse(BaseModel):
     id: int
     book_id: int | None = None
@@ -49,6 +66,7 @@ class DiscussionResponse(BaseModel):
     likes_count: int = 0
     liked_by_me: bool = False
     user_reaction: str | None = None
+    user_reactions: list[str] = Field(default_factory=list)
     reaction_counts: ReactionCounts = Field(default_factory=ReactionCounts)
     author_name: str = "Community"
     created_at: datetime
@@ -96,6 +114,7 @@ class DiscussionReactionRequest(BaseModel):
 class DiscussionReactionResponse(BaseModel):
     discussion_id: int
     reaction_type: str | None
+    user_reactions: list[str] = Field(default_factory=list)
     likes_count: int
     reaction_counts: ReactionCounts
 
@@ -126,6 +145,7 @@ class DiscussionThreadResponse(BaseModel):
     likes_count: int
     liked_by_me: bool
     user_reaction: str | None = None
+    user_reactions: list[str] = Field(default_factory=list)
     reaction_counts: ReactionCounts = Field(default_factory=ReactionCounts)
     author_name: str
     created_at: datetime

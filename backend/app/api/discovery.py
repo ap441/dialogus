@@ -29,6 +29,6 @@ def get_home_data(
     trending_discussions = discussions_query.limit(5).all()
     return HomeResponse(
         welcome_name=current_user.full_name,
-        trending_discussions=[_discussion_payload(item, current_user.id) for item in trending_discussions],
+        trending_discussions=[_discussion_payload(db, item, current_user.id) for item in trending_discussions],
         recommended_books=ranked_books[:8],
     )

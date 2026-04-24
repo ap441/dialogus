@@ -7,7 +7,7 @@ import { BookCard } from "@/components/BookCard";
 import { DiscussionCard } from "@/components/DiscussionCard";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { Discussion, HomeData, getHomeData, getTimeline, setDiscussionReaction } from "@/lib/api";
+import { ApiError, Discussion, HomeData, getHomeData, getTimeline, setDiscussionReaction } from "@/lib/api";
 
 export default function HomePage() {
   const router = useRouter();
@@ -37,6 +37,13 @@ export default function HomePage() {
         }
       } catch (err) {
         if (mounted) {
+          if (err instanceof ApiError && err.status === 401) {
+            localStorage.removeItem("dialogus_token");
+            localStorage.removeItem("userEmail");
+            router.replace("/login");
+            return;
+          }
+
           setError(err instanceof Error ? err.message : "Failed to load data");
         }
       } finally {
@@ -55,18 +62,29 @@ export default function HomePage() {
   async function handleReact(discussionId: number, reactionType: "like" | "dislike" | "recommend") {
     try {
       const result = await setDiscussionReaction(discussionId, reactionType);
+      const applyReactionUpdate = (discussion: Discussion) =>
+        discussion.id === discussionId
+          ? {
+              ...discussion,
+              likes_count: result.likes_count,
+              liked_by_me: result.user_reactions.includes("like"),
+              user_reaction: result.user_reactions[0] ?? null,
+              user_reactions: result.user_reactions,
+              reaction_counts: result.reaction_counts,
+            }
+          : discussion;
+
       setTimeline((current) =>
-        current.map((discussion) =>
-          discussion.id === discussionId
-            ? {
-                ...discussion,
-                likes_count: result.likes_count,
-                liked_by_me: result.reaction_type === "like",
-                user_reaction: result.reaction_type,
-                reaction_counts: result.reaction_counts,
-              }
-            : discussion
-        )
+        current.map(applyReactionUpdate)
+      );
+
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              trending_discussions: current.trending_discussions.map(applyReactionUpdate),
+            }
+          : current
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update appreciation");

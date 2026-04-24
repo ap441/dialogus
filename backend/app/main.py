@@ -9,9 +9,10 @@ from app.api.auth import router as auth_router
 from app.api.discovery import router as discovery_router
 from app.api.books import router as books_router
 from app.api.discussions import router as discussions_router
+from app.api.notifications import router as notifications_router
 from app.core.config import settings
 from app.db.session import Base, engine, SessionLocal
-from app.models import User, Book, Discussion  # noqa: F401 - imported for table creation
+from app.models import User, Book, Discussion, Notification  # noqa: F401 - imported for table creation
 from app.seed import seed_data
 
 app = FastAPI(title=settings.app_name)
@@ -78,6 +79,26 @@ def on_startup():
                 conn.exec_driver_sql("UPDATE discussion_likes SET reaction_type = COALESCE(reaction_type, 'like')")
             except Exception:
                 pass
+
+        if is_postgresql:
+            try:
+                constraint_rows = conn.exec_driver_sql(
+                    """
+                    SELECT pg_get_constraintdef(oid)
+                    FROM pg_constraint
+                    WHERE conrelid = 'discussion_likes'::regclass
+                      AND conname = 'uq_discussion_like'
+                    """
+                ).fetchall()
+                if constraint_rows:
+                    constraint_def = constraint_rows[0][0] or ""
+                    if "UNIQUE (discussion_id, user_id)" in constraint_def and "reaction_type" not in constraint_def:
+                        conn.exec_driver_sql("ALTER TABLE discussion_likes DROP CONSTRAINT uq_discussion_like")
+                        conn.exec_driver_sql(
+                            "ALTER TABLE discussion_likes ADD CONSTRAINT uq_discussion_like UNIQUE (discussion_id, user_id, reaction_type)"
+                        )
+            except Exception:
+                pass
     
     # Seed demo data
     db = SessionLocal()
@@ -96,3 +117,4 @@ app.include_router(auth_router)
 app.include_router(discovery_router)
 app.include_router(books_router)
 app.include_router(discussions_router)
+app.include_router(notifications_router)

@@ -30,6 +30,7 @@ export function DiscussionCard({ discussion, onOpen, onReact }: Props) {
           compact
           reactionCounts={reactionCounts}
           activeReaction={discussion.user_reaction ?? null}
+          activeReactions={discussion.user_reactions ?? []}
           onReact={(reactionType) => onReact?.(discussion.id, reactionType)}
         />
       </div>

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ReactionBar } from "@/components/ReactionBar";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { createThreadReply, DiscussionThread, getDiscussionThread, setDiscussionReaction } from "@/lib/api";
+import { ApiError, createThreadReply, DiscussionThread, getDiscussionThread, setDiscussionReaction } from "@/lib/api";
 
 export default function DiscussionThreadPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -36,6 +36,13 @@ export default function DiscussionThreadPage({ params }: { params: { id: string 
         }
       } catch (err) {
         if (mounted) {
+          if (err instanceof ApiError && err.status === 401) {
+            localStorage.removeItem("dialogus_token");
+            localStorage.removeItem("userEmail");
+            router.replace("/login");
+            return;
+          }
+
           setError(err instanceof Error ? err.message : "Failed to load thread");
         }
       } finally {
@@ -63,8 +70,9 @@ export default function DiscussionThreadPage({ params }: { params: { id: string 
           ? {
               ...current,
               likes_count: result.likes_count,
-              liked_by_me: result.reaction_type === "like",
-              user_reaction: result.reaction_type,
+              liked_by_me: result.user_reactions.includes("like"),
+              user_reaction: result.user_reactions[0] ?? null,
+              user_reactions: result.user_reactions,
               reaction_counts: result.reaction_counts,
             }
           : current
@@ -126,6 +134,7 @@ export default function DiscussionThreadPage({ params }: { params: { id: string 
                   <ReactionBar
                     reactionCounts={thread.reaction_counts}
                     activeReaction={thread.user_reaction ?? null}
+                    activeReactions={thread.user_reactions ?? []}
                     onReact={handleReactThread}
                   />
                 </div>

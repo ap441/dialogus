@@ -3,7 +3,7 @@ import os
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
-from app.models import User, Book, Discussion, DiscussionPost
+from app.models import User, Book, Discussion, DiscussionPost, Notification
 from app.services.book_import import ingest_open_library_books
 
 
@@ -98,6 +98,20 @@ def seed_data(db: Session):
                 )
 
     db.commit()
+
+    if db.query(Notification).count() == 0 and demo_user:
+        db.add(
+            Notification(
+                user_id=demo_user.id,
+                actor_user_id=None,
+                notification_type="system_welcome",
+                title="Welcome to Dialogus",
+                message="Your reading community is ready. Try replying to a discussion or reacting to a post.",
+                link="/home",
+                is_read=False,
+            )
+        )
+        db.commit()
 
     # Optional enrichment from Open Library. Disabled by default in docker-compose to keep startup fast.
     if os.getenv("BOOK_IMPORT_ENABLED", "1").lower() not in {"0", "false", "no"}:
