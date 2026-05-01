@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { MarkdownEditor } from "@/components/MarkdownEditor";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { ReactionBar } from "@/components/ReactionBar";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
@@ -129,7 +131,9 @@ export default function DiscussionThreadPage({ params }: { params: { id: string 
                   <div>
                     <p className="thread-meta">{thread.book_title} • started by {thread.author_name}</p>
                     <h2>{thread.title}</h2>
-                    <p className="book-description">{thread.body || thread.excerpt}</p>
+                    <div className="thread-body-markdown">
+                      <MarkdownRenderer content={thread.body || thread.excerpt} />
+                    </div>
                   </div>
                   <ReactionBar
                     reactionCounts={thread.reaction_counts}
@@ -149,10 +153,14 @@ export default function DiscussionThreadPage({ params }: { params: { id: string 
                         <strong>{post.author_name}</strong>
                         <small>{new Date(post.created_at).toLocaleString()}</small>
                       </div>
-                      <p>{post.content}</p>
-                      <button type="button" className="text-btn" onClick={() => setReplyTo(post.id)}>
-                        Reply
-                      </button>
+                      <div className="thread-post-body">
+                        <MarkdownRenderer content={post.content} />
+                      </div>
+                      <div className="thread-post-actions">
+                        <button type="button" className="text-btn" onClick={() => setReplyTo(post.id)}>
+                          Reply
+                        </button>
+                      </div>
                     </article>
                   ))}
                 </div>
@@ -166,12 +174,13 @@ export default function DiscussionThreadPage({ params }: { params: { id: string 
                       </button>
                     </p>
                   ) : null}
-                  <textarea
+                  <MarkdownEditor
                     value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    rows={4}
-                    placeholder="Share your thoughts..."
-                    required
+                    onChange={setDraft}
+                    placeholder="Share your thoughts in markdown..."
+                    rows={5}
+                    hint="Replies support markdown formatting, quotes, links, and code snippets."
+                    previewLabel="Preview reply"
                   />
                   <button type="submit" disabled={submitting}>
                     {submitting ? "Posting..." : "Post Reply"}

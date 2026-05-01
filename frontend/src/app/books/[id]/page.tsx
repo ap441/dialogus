@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import { DiscussionCard } from "@/components/DiscussionCard";
+import { MarkdownEditor } from "@/components/MarkdownEditor";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
 import { ApiError, BookDetail, createDiscussion, getBook, setDiscussionReaction } from "@/lib/api";
@@ -176,17 +178,21 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
                 placeholder="One-line prompt"
                 required
               />
-              <textarea
+              <MarkdownEditor
                 value={threadBody}
-                onChange={(event) => setThreadBody(event.target.value)}
-                placeholder="Share your deeper take"
-                rows={4}
+                onChange={setThreadBody}
+                placeholder="Share your deeper take in markdown"
+                rows={5}
+                hint="Markdown is supported here, so you can style the discussion before it even begins."
+                previewLabel="Preview thread"
               />
               <button type="submit" disabled={savingThread}>
                 {savingThread ? "Publishing..." : "Publish Thread"}
               </button>
             </form>
-            <p className="book-description">{book.description}</p>
+            <div className="book-description markdown-inline">
+              <MarkdownRenderer content={book.description} />
+            </div>
 
             <div className="discussion-stack">
               {book.discussions.map((discussion) => (

@@ -14,6 +14,8 @@ export function Navbar({ compact = false }: Props) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>("member");
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -24,10 +26,16 @@ export function Navbar({ compact = false }: Props) {
   useEffect(() => {
     const token = localStorage.getItem("dialogus_token");
     const email = localStorage.getItem("userEmail");
+    const name = localStorage.getItem("userName");
+    const role = localStorage.getItem("userRole") || "member";
     setIsSignedIn(Boolean(token));
     if (token && email) {
       setUserEmail(email);
     }
+    if (name) {
+      setUserName(name);
+    }
+    setUserRole(role);
   }, []);
 
   useEffect(() => {
@@ -83,8 +91,13 @@ export function Navbar({ compact = false }: Props) {
   const handleLogout = () => {
     localStorage.removeItem("dialogus_token");
     localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userAvatar");
     setIsSignedIn(false);
     setUserEmail(null);
+    setUserName(null);
+    setUserRole("member");
     setDropdownOpen(false);
     setNotificationsOpen(false);
     router.push("/");
@@ -129,6 +142,9 @@ export function Navbar({ compact = false }: Props) {
   const getInitials = (email: string) => {
     return email.substring(0, 2).toUpperCase();
   };
+
+  const displayName = userName || userEmail || "Profile";
+  const initialsSource = userName || userEmail || "?";
 
   return (
     <header className={`topbar ${compact ? "compact" : ""}`.trim()}>
@@ -224,14 +240,25 @@ export function Navbar({ compact = false }: Props) {
                 router.push("/login");
               }
             }}
-            title={userEmail || "Profile"}
+            title={displayName}
           >
-            <div className="profile-avatar">{userEmail ? getInitials(userEmail) : "?"}</div>
+            <div className="profile-avatar">{getInitials(initialsSource)}</div>
           </button>
 
           {dropdownOpen && (
             <div className="dropdown-menu">
-              {userEmail && <div className="dropdown-header">{userEmail}</div>}
+              <div className="dropdown-header">
+                <div>{displayName}</div>
+                <small>{userRole === "admin" ? "Admin" : "Member"}</small>
+              </div>
+              <Link href="/profile" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                Profile
+              </Link>
+              {userRole === "admin" ? (
+                <Link href="/admin" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                  Admin Dashboard
+                </Link>
+              ) : null}
               <button onClick={handleLogout} className="dropdown-item logout-item">
                 Logout
               </button>

@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GoogleLogin } from "@react-oauth/google";
 
-import { login, signup, googleLogin } from "@/lib/api";
+import { getProfile, login, signup, googleLogin } from "@/lib/api";
 
 type Mode = "login" | "signup";
 
@@ -31,11 +31,17 @@ export function AuthPanel({ mode }: { mode: Mode }) {
         }
         const token = await signup(fullName, email, password);
         localStorage.setItem("dialogus_token", token.access_token);
-        localStorage.setItem("userEmail", email);
       } else {
         const token = await login(email, password);
         localStorage.setItem("dialogus_token", token.access_token);
-        localStorage.setItem("userEmail", email);
+      }
+
+      const profile = await getProfile();
+      localStorage.setItem("userEmail", profile.email);
+      localStorage.setItem("userRole", profile.role);
+      localStorage.setItem("userName", profile.full_name);
+      if (profile.avatar_url) {
+        localStorage.setItem("userAvatar", profile.avatar_url);
       }
 
       router.push("/home");
@@ -53,9 +59,13 @@ export function AuthPanel({ mode }: { mode: Mode }) {
     try {
       const token = await googleLogin(credentialResponse.credential);
       localStorage.setItem("dialogus_token", token.access_token);
-      // Extract email from the JWT if needed, or fetch from /api/auth/me
-      const decoded = JSON.parse(atob(credentialResponse.credential.split('.')[1]));
-      localStorage.setItem("userEmail", decoded.email);
+      const profile = await getProfile();
+      localStorage.setItem("userEmail", profile.email);
+      localStorage.setItem("userRole", profile.role);
+      localStorage.setItem("userName", profile.full_name);
+      if (profile.avatar_url) {
+        localStorage.setItem("userAvatar", profile.avatar_url);
+      }
       router.push("/home");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google sign-in failed");

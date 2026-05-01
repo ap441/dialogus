@@ -106,6 +106,38 @@ export type NotificationList = {
   notifications: NotificationItem[];
 };
 
+export type ProfileData = {
+  id: number;
+  full_name: string;
+  email: string;
+  role: string;
+  bio?: string | null;
+  avatar_url?: string | null;
+  created_at: string;
+  discussion_count: number;
+  reply_count: number;
+  reaction_count: number;
+  notification_count: number;
+  unread_notification_count: number;
+};
+
+export type AdminStats = {
+  total_users: number;
+  total_admins: number;
+  total_books: number;
+  total_discussions: number;
+  total_replies: number;
+  total_notifications: number;
+  unread_notifications: number;
+};
+
+export type AdminDashboard = {
+  stats: AdminStats;
+  users: ProfileData[];
+  recent_discussions: Discussion[];
+  recent_notifications: NotificationItem[];
+};
+
 // Prefer same-origin API calls so Next.js rewrites can proxy to backend.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.trim() || "";
 
@@ -223,5 +255,27 @@ export function markNotificationRead(notificationId: number) {
 export function markAllNotificationsRead() {
   return request<{ updated: number }>("/api/notifications/read-all", {
     method: "POST"
+  });
+}
+
+export function getProfile() {
+  return request<ProfileData>("/api/profile/me");
+}
+
+export function updateProfile(payload: { full_name: string; bio?: string | null; avatar_url?: string | null }) {
+  return request<ProfileData>("/api/profile/me", {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getAdminDashboard() {
+  return request<AdminDashboard>("/api/admin/dashboard");
+}
+
+export function updateUserRole(userId: number, role: "member" | "admin") {
+  return request<ProfileData>(`/api/admin/users/${userId}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ role })
   });
 }

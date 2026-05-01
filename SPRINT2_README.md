@@ -4,7 +4,7 @@ This document summarizes everything implemented for Sprint 2.
 
 ## Sprint 2 Goals
 
-- Timeline Feed
+- Timeline Feedzz
 - Like and Appreciation System
 - Discussion Thread Engine
 
@@ -30,7 +30,7 @@ Backend:
 - Reactions are stored in discussion_likes with a typed reaction field.
 - Supported reactions:
   - like
-  - dislike
+  - dislike36  
   - recommend
 - One reaction per user per discussion.
 - Switching reactions updates counts correctly.

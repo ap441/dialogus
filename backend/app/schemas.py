@@ -33,9 +33,48 @@ class UserResponse(BaseModel):
     id: int
     full_name: str
     email: EmailStr
+    role: str = "member"
+    bio: str | None = ""
+    avatar_url: str | None = None
+    created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class ProfileUpdateRequest(BaseModel):
+    full_name: str
+    bio: str | None = ""
+    avatar_url: str | None = None
+
+
+class ProfileResponse(UserResponse):
+    discussion_count: int = 0
+    reply_count: int = 0
+    reaction_count: int = 0
+    notification_count: int = 0
+    unread_notification_count: int = 0
+
+
+class AdminUserResponse(UserResponse):
+    discussion_count: int = 0
+    reply_count: int = 0
+    notification_count: int = 0
+    unread_notification_count: int = 0
+
+
+class AdminUserRoleUpdateRequest(BaseModel):
+    role: str
+
+
+class AdminStatsResponse(BaseModel):
+    total_users: int = 0
+    total_admins: int = 0
+    total_books: int = 0
+    total_discussions: int = 0
+    total_replies: int = 0
+    total_notifications: int = 0
+    unread_notifications: int = 0
 
 
 class NotificationResponse(BaseModel):
@@ -53,6 +92,13 @@ class NotificationResponse(BaseModel):
 class NotificationListResponse(BaseModel):
     unread_count: int
     notifications: list[NotificationResponse]
+
+
+class AdminDashboardResponse(BaseModel):
+    stats: AdminStatsResponse
+    users: list[AdminUserResponse]
+    recent_discussions: list["DiscussionResponse"]
+    recent_notifications: list[NotificationResponse]
 
 
 class DiscussionResponse(BaseModel):

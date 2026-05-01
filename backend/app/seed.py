@@ -1,6 +1,6 @@
 import os
 
-from sqlalchemy import func
+from sqlalchemy import func, inspect
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
@@ -63,9 +63,12 @@ def seed_data(db: Session):
             full_name="Demo Reader",
             email="demo@dialogus.app",
             hashed_password=hash_password("password123"),
+            role="admin",
         )
         db.add(demo_user)
         db.flush()
+    elif demo_user:
+        demo_user.role = "admin"
 
     if db.query(Book).count() == 0:
         for item in SEED_BOOKS:
