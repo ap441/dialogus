@@ -21,7 +21,7 @@ export function MarkdownRenderer({ content, className = "" }: { content: string;
           ol: ({ children }) => <ol>{children}</ol>,
           li: ({ children }) => <li>{children}</li>,
           blockquote: ({ children }) => <blockquote>{children}</blockquote>,
-          code: ({ inline, children }) => inline ? <code>{children}</code> : <pre><code>{children}</code></pre>,
+          code: ({ children }) => <code>{children}</code>,
           pre: ({ children }) => <pre>{children}</pre>,
         }}
       >
