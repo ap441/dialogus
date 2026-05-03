@@ -1631,3 +1631,41 @@ a {
     margin-top: 60px;
   }
 }
+
+@media (max-width: 580px) {
+  .topbar {
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .brand {
+    font-size: 18px;
+  }
+
+  .navbar-actions {
+    gap: 4px;
+  }
+
+  .icon-btn[title="Settings"] {
+    display: none;
+  }
+
+  .search-input-wrapper input {
+    width: 100px;
+    padding-left: 28px;
+    font-size: 0.85rem;
+  }
+
+  .search-input-wrapper input:focus {
+    width: 140px;
+    position: absolute;
+    right: 0;
+    z-index: 10;
+  }
+
+  .search-icon {
+    left: 8px;
+    width: 16px;
+    height: 16px;
+  }
+}
