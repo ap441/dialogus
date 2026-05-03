@@ -148,16 +148,22 @@ export default function DiscussionThreadPage({ params }: { params: { id: string 
                 <h3>Thread Replies</h3>
                 <div className="discussion-stack">
                   {thread.posts.map((post) => (
-                    <article key={post.id} className="thread-post" style={{ marginLeft: `${post.depth * 18}px` }}>
+                    <article key={post.id} className="thread-post" style={{ marginLeft: `min(${post.depth * 28}px, 15vw)` }}>
                       <div className="thread-post-head">
-                        <strong>{post.author_name}</strong>
-                        <small>{new Date(post.created_at).toLocaleString()}</small>
+                        <div className="thread-post-avatar">
+                          {post.author_name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div className="thread-post-author-info">
+                          <strong>{post.author_name}</strong>
+                          <small>{new Date(post.created_at).toLocaleString()}</small>
+                        </div>
                       </div>
                       <div className="thread-post-body">
                         <MarkdownRenderer content={post.content} />
                       </div>
                       <div className="thread-post-actions">
-                        <button type="button" className="text-btn" onClick={() => setReplyTo(post.id)}>
+                        <button type="button" className="action-btn-small" onClick={() => setReplyTo(post.id)}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path></svg>
                           Reply
                         </button>
                       </div>
