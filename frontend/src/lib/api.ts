@@ -279,3 +279,11 @@ export function updateUserRole(userId: number, role: "member" | "admin") {
     body: JSON.stringify({ role })
   });
 }
+
+export function searchUsers(query: string) {
+  return request<ProfileData[]>(`/api/profile/search?q=${encodeURIComponent(query)}`);
+}
+
+export function getUserProfile(userId: number) {
+  return request<ProfileData>(`/api/profile/${userId}`);
+}
