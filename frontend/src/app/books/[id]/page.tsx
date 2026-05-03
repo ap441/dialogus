@@ -5,9 +5,11 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import { DiscussionCard } from "@/components/DiscussionCard";
+import { MarkdownEditor } from "@/components/MarkdownEditor";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
-import { BookDetail, createDiscussion, getBook, setDiscussionReaction } from "@/lib/api";
+import { ApiError, BookDetail, createDiscussion, getBook, setDiscussionReaction } from "@/lib/api";
 
 export default function BookDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -32,6 +34,13 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
         setBook(result);
         setError("");
       } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          localStorage.removeItem("dialogus_token");
+          localStorage.removeItem("userEmail");
+          router.replace("/login");
+          return;
+        }
+
         setError(err instanceof Error ? err.message : "Failed to load book");
       }
     }
@@ -86,8 +95,9 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
               ? {
                   ...discussion,
                   likes_count: result.likes_count,
-                  liked_by_me: result.reaction_type === "like",
-                  user_reaction: result.reaction_type,
+                  liked_by_me: result.user_reactions.includes("like"),
+                  user_reaction: result.user_reactions[0] ?? null,
+                  user_reactions: result.user_reactions,
                   reaction_counts: result.reaction_counts,
                 }
               : discussion
@@ -168,17 +178,21 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
                 placeholder="One-line prompt"
                 required
               />
-              <textarea
+              <MarkdownEditor
                 value={threadBody}
-                onChange={(event) => setThreadBody(event.target.value)}
-                placeholder="Share your deeper take"
-                rows={4}
+                onChange={setThreadBody}
+                placeholder="Share your deeper take in markdown"
+                rows={5}
+                hint="Markdown is supported here, so you can style the discussion before it even begins."
+                previewLabel="Preview thread"
               />
               <button type="submit" disabled={savingThread}>
                 {savingThread ? "Publishing..." : "Publish Thread"}
               </button>
             </form>
-            <p className="book-description">{book.description}</p>
+            <div className="book-description markdown-inline">
+              <MarkdownRenderer content={book.description} />
+            </div>
 
             <div className="discussion-stack">
               {book.discussions.map((discussion) => (

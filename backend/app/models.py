@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Integer, Float, ForeignKey, DateTime, Text, UniqueConstraint
+from sqlalchemy import String, Integer, Float, ForeignKey, DateTime, Text, UniqueConstraint, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -13,11 +13,19 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(120), nullable=False)
     email: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), default="member")
+    bio: Mapped[str | None] = mapped_column(Text, default="")
+    avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     discussions: Mapped[list["Discussion"]] = relationship(back_populates="author")
     discussion_posts: Mapped[list["DiscussionPost"]] = relationship(back_populates="author")
     discussion_likes: Mapped[list["DiscussionLike"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    notifications: Mapped[list["Notification"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="Notification.user_id",
+    )
 
 
 class Book(Base):
@@ -74,7 +82,7 @@ class DiscussionPost(Base):
 
 class DiscussionLike(Base):
     __tablename__ = "discussion_likes"
-    __table_args__ = (UniqueConstraint("discussion_id", "user_id", name="uq_discussion_like"),)
+    __table_args__ = (UniqueConstraint("discussion_id", "user_id", "reaction_type", name="uq_discussion_like"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     discussion_id: Mapped[int] = mapped_column(ForeignKey("discussions.id", ondelete="CASCADE"), index=True)
@@ -84,3 +92,21 @@ class DiscussionLike(Base):
 
     discussion: Mapped[Discussion] = relationship(back_populates="likes")
     user: Mapped[User] = relationship(back_populates="discussion_likes")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    notification_type: Mapped[str] = mapped_column(String(40), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    message: Mapped[str] = mapped_column(Text)
+    link: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped[User] = relationship(back_populates="notifications", foreign_keys=[user_id])
+    actor: Mapped[User | None] = relationship(foreign_keys=[actor_user_id])

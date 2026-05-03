@@ -1,7 +1,10 @@
+import os
+
+from sqlalchemy import func, inspect
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
-from app.models import User, Book, Discussion, DiscussionPost
+from app.models import User, Book, Discussion, DiscussionPost, Notification
 from app.services.book_import import ingest_open_library_books
 
 
@@ -17,9 +20,9 @@ SEED_BOOKS = [
         "language": "English",
         "pages": 920,
         "discussions": [
-            {"title": "Question 1?", "excerpt": "What do you think of Sunny's decision in chapter 12?", "replies": 34},
-            {"title": "Question 2?", "excerpt": "Is the dream realm metaphorical or literal in your interpretation?", "replies": 19},
-            {"title": "Question 3?", "excerpt": "Favorite supporting character and why?", "replies": 8},
+            {"title": "Question 1?", "excerpt": "What do you think of Sunny's decision in chapter 12?", "replies": 1},
+            {"title": "Question 2?", "excerpt": "Is the dream realm metaphorical or literal in your interpretation?", "replies": 1},
+            {"title": "Question 3?", "excerpt": "Favorite supporting character and why?", "replies": 1},
         ],
     },
     {
@@ -33,7 +36,7 @@ SEED_BOOKS = [
         "language": "English",
         "pages": 680,
         "discussions": [
-            {"title": "Character Arc", "excerpt": "Which arc had the best pacing and payoff?", "replies": 22},
+            {"title": "Character Arc", "excerpt": "Which arc had the best pacing and payoff?", "replies": 1},
         ],
     },
     {
@@ -47,7 +50,7 @@ SEED_BOOKS = [
         "language": "English",
         "pages": 1100,
         "discussions": [
-            {"title": "Magic Mechanics", "excerpt": "Which magic path seems strongest for late game?", "replies": 15},
+            {"title": "Magic Mechanics", "excerpt": "Which magic path seems strongest for late game?", "replies": 1},
         ],
     },
 ]
@@ -60,9 +63,12 @@ def seed_data(db: Session):
             full_name="Demo Reader",
             email="demo@dialogus.app",
             hashed_password=hash_password("password123"),
+            role="admin",
         )
         db.add(demo_user)
         db.flush()
+    elif demo_user:
+        demo_user.role = "admin"
 
     if db.query(Book).count() == 0:
         for item in SEED_BOOKS:
@@ -97,5 +103,48 @@ def seed_data(db: Session):
 
     db.commit()
 
-    # Best effort enrichment from Open Library. If network is unavailable, local seed still works.
-    ingest_open_library_books(db)
+    if db.query(Notification).count() == 0 and demo_user:
+        db.add(
+            Notification(
+                user_id=demo_user.id,
+                actor_user_id=None,
+                notification_type="system_welcome",
+                title="Welcome to Dialogus",
+                message="Your reading community is ready. Try replying to a discussion or reacting to a post.",
+                link="/home",
+                is_read=False,
+            )
+        )
+
+    target_email = "adityapatel13307@gmail.com"
+    target_user = db.query(User).filter(User.email == target_email).first()
+    if target_user and not db.query(Notification).filter(
+        Notification.user_id == target_user.id,
+        Notification.notification_type == "system_welcome",
+    ).first():
+        db.add(
+            Notification(
+                user_id=target_user.id,
+                actor_user_id=None,
+                notification_type="system_welcome",
+                title="Welcome to Dialogus",
+                message="A new notification has been added for your account so you can test the inbox experience.",
+                link="/notifications",
+                is_read=False,
+            )
+        )
+
+    for discussion in db.query(Discussion).all():
+        reply_count = (
+            db.query(func.count(DiscussionPost.id))
+            .filter(DiscussionPost.discussion_id == discussion.id)
+            .scalar()
+            or 0
+        )
+        discussion.replies = reply_count
+
+    db.commit()
+
+    # Optional enrichment from Open Library. Disabled by default in docker-compose to keep startup fast.
+    if os.getenv("BOOK_IMPORT_ENABLED", "1").lower() not in {"0", "false", "no"}:
+        ingest_open_library_books(db, per_subject=80)
